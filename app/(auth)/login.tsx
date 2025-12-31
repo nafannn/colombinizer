@@ -60,7 +60,7 @@ export default function Auth() {
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }}>
         <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <View style={styles.containerStyle}>
-            <Text style={styles.titleText}>Columbinizer</Text>
+            <Text style={styles.titleText}>Colombinizer</Text>
             
             <TextInput
               style={styles.textInputStyle}

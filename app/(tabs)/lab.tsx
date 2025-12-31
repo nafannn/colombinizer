@@ -1,10 +1,12 @@
-import {StyleSheet, View, Text, ScrollView, Pressable, Image as RNImage, Switch, TextInput, useWindowDimensions} from "react-native";
+import {StyleSheet, View, Text, ScrollView, Pressable, Image as RNImage, Switch, TextInput, useWindowDimensions, Alert} from "react-native";
 import Svg, { Line as SvgLine, Rect as SvgRect, Image as SvgImage } from "react-native-svg";
-import React from "react";
+import React, { useState } from "react";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import {useState } from "react";
 import Navbar from "../../components/navbar";
+import CustomAlert from "../../components/alert";
+import { supabase } from "../../lib/supabase";
+import { useRouter } from "expo-router";
 
 // charge object type
 type Charge = {
@@ -51,6 +53,7 @@ function FieldPlot({
 }
 
 export default function App() {
+  const router = useRouter();
 
   // states
   const [cards, setCards] = useState<number[]>([]);
@@ -62,10 +65,146 @@ export default function App() {
   const { width } = useWindowDimensions();
   const [canvas, setCanvas] =
   useState<{x:number,y:number,width:number,height:number} | null>(null);
+  
+  // Notification states
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'info' | 'warning';
+    title: string;
+    message: string;
+    buttons?: Array<{
+      text: string;
+      onPress?: () => void;
+      style?: 'default' | 'cancel' | 'destructive';
+    }>;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
 
   // constants
   const isLarge = width > 1000;
   const k = 8.9875517923e9; 
+
+  // save history function
+  const saveExperiment = async () => {
+    try {
+      console.log("=== Save Experiment Started ===");
+      
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
+      
+      console.log("Session:", session);
+      console.log("Auth Error:", authError);
+
+      if (authError && authError.message !== "Auth session missing!") {
+        console.error("Auth error:", authError);
+        setAlertConfig({
+          visible: true,
+          type: 'error',
+          title: 'Error',
+          message: 'Unable to verify login status. Please try again.',
+        });
+        return;
+      }
+
+      if (!session || !session.user) {
+        console.log("User not logged in - showing notification");
+        setAlertConfig({
+          visible: true,
+          type: 'warning',
+          title: 'Guest Mode',
+          message: 'Please log in first to save your lab results to the database.',
+          buttons: [
+            { text: 'Not now', style: 'cancel' },
+            { 
+              text: 'Log in now',
+              onPress: () => router.push("/(auth)/login")
+            }
+          ]
+        });
+        return;
+      }
+
+      console.log("User logged in:", session.user.id);
+
+      if (charges.length === 0) {
+        console.log("No charges to save");
+        setAlertConfig({
+          visible: true,
+          type: 'info',
+          title: 'No Data',
+          message: 'Please add at least one charge before saving.',
+        });
+        return;
+      }
+
+      console.log("Saving", charges.length, "charges to database");
+
+      // save to database
+      const { error } = await supabase
+        .from('experiments')
+        .insert(
+          charges.map(c => {
+            const force = forceData.find(f => f.id === c.id);
+            return {
+              user_id: session.user.id,
+              q1: c.q,
+              q2: 0, 
+              distance: Math.sqrt(c.x * c.x + c.y * c.y),
+              force: force?.magnitude || 0,
+            };
+          })
+        );
+
+      if (error) {
+        console.error("Save error:", error);
+        setAlertConfig({
+          visible: true,
+          type: 'error',
+          title: 'Unable to save',
+          message: error.message,
+        });
+      } else {
+        console.log("Save successful!");
+        setAlertConfig({
+          visible: true,
+          type: 'success',
+          title: 'Success!',
+          message: 'Your experiment has been saved to your history.',
+        });
+      }
+
+    } catch (error: any) {
+      console.error("Unexpected error:", error);
+      
+      // alert login
+      if (error?.message?.includes("Auth session missing")) {
+        console.log("Auth session missing - showing login notification");
+        setAlertConfig({
+          visible: true,
+          type: 'warning',
+          title: 'Guest Mode',
+          message: 'Please log in first to save your lab results to the database.',
+          buttons: [
+            { text: 'Not now', style: 'cancel' },
+            { 
+              text: 'Log in now',
+              onPress: () => router.push("/(auth)/login")
+            }
+          ]
+        });
+      } else {
+        setAlertConfig({
+          visible: true,
+          type: 'error',
+          title: 'Error',
+          message: 'An unexpected error occurred. Please try again.',
+        });
+      }
+    }
+  };
 
   // utility functions
 
@@ -239,6 +378,17 @@ export default function App() {
   return (
     <SafeAreaProvider
       style={{ backgroundColor: "#EEEEEEff" }}>
+        
+        {/* Custom Alert Component */}
+        <CustomAlert
+          visible={alertConfig.visible}
+          type={alertConfig.type}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          buttons={alertConfig.buttons}
+          onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
+        />
+
         <ScrollView
           scrollEnabled={!dragging}
           contentContainerStyle={{ paddingBottom: 40 }}
@@ -259,7 +409,7 @@ export default function App() {
               style={styles.containerStyle}
             >
               <Text style={styles.titleText}>
-                Colomb's law simulator
+                Coulomb's Law Simulator
               </Text>
             </View>
             {/*Force Display*/}
@@ -444,6 +594,24 @@ export default function App() {
             </Text>
           </View>
             ))}
+
+            {/* PINDAHKAN TOMBOL SAVE KE SINI (DI DALAM KOTAK BIRU) */}
+            <Pressable 
+              onPress={saveExperiment}
+              style={({ pressed }) => [
+                {
+                  backgroundColor: pressed ? "#45a049" : "#4CAF50",
+                  marginTop: 15,
+                  padding: 12,
+                  borderRadius: 8,
+                  alignItems: "center"
+                }
+              ]}
+            >
+              <Text style={{ color: "white", fontWeight: "bold", fontSize: 14 }}>
+                Save this experiment
+              </Text>
+            </Pressable>
           </View>
           </View>
           {showEField && (
@@ -453,12 +621,7 @@ export default function App() {
           {showPField && (
             <FieldPlot title="Potential Field" render={(w,h)=>renderPotential(w,h)} />
           )}
-
-
-
-
         </View>
-
 
           {/* right side */}
           <View style={{width: isLarge ? "56%" : "100%",}}>
@@ -513,16 +676,25 @@ export default function App() {
                     {/* Charge */}
                     <Text style={styles.chargeText}>
                       Charge     : <TextInput
-                    style={styles.textInputStyle}
-                    keyboardType="numeric"
-                    value={String(charges[index].q)}
-                    onChangeText={(text) => {
-                      onChangeNumber(text);
-                      const num = Number(text);
-                      addCharge(index, isNaN(num) ? 0.01 : num);
-                    }}
-                    placeholder="5"
-                  /> nC
+                      style={styles.textInputStyle}
+                      keyboardType="numeric"
+                      value={String(charges[index].q)}
+                      onChangeText={(text) => {
+                        if (text === '' || text === '-') {
+                          setCharges(prev => {
+                            const copy = [...prev];
+                            copy[index].q = text as any; 
+                            return copy;
+                          });
+                          return;
+                        }
+                      
+                        const num = parseFloat(text);
+                        if (!isNaN(num)) {
+                          addCharge(index, num);
+                        }
+                      }}
+                    /> nC
                     </Text>
 
                     {/* Polarity */}

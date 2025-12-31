@@ -25,7 +25,7 @@ export default function Home() {
 
         <View style={styles.containerStyle}>
           <Text style={styles.titleText}>
-            Columbinizer
+            Colombinizer
           </Text>
         </View>
         <View style={styles.containerStyle}>
@@ -117,7 +117,7 @@ export default function Home() {
         </View>
         <View style={styles.containerStyle}>
           <Text style={styles.titleText}>
-            How to Use the App
+            How to Use the Virtual Lab
           </Text>
           <Text style={styles.subtitleText}>
             1. Adding and Manipulating Charges
