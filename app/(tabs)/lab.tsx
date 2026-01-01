@@ -1,4 +1,4 @@
-import {StyleSheet, View, Text, ScrollView, Pressable, Image as RNImage, Switch, TextInput, useWindowDimensions, Alert, TouchableOpacity} from "react-native";
+import {StyleSheet, View, Text, ScrollView, Pressable, Image as RNImage, Switch, TextInput, useWindowDimensions, TouchableOpacity} from "react-native";
 import Svg, { Line as SvgLine, Rect as SvgRect, Image as SvgImage } from "react-native-svg";
 import React, { useState } from "react";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -85,6 +85,7 @@ export default function App() {
 
   // constants
   const isLarge = width > 1000;
+  const isMobile = width < 768;
   const k = 8.9875517923e9; 
 
   // save history function
@@ -224,7 +225,7 @@ export default function App() {
             key={`${x}-${y}`}
             x={x} y={y}
             width={step} height={step}
-            fill="yellow"
+            fill="yellow" // DIKEMBALIKAN KE YELLOW
             fillOpacity={intensity}
           />
         );
@@ -236,7 +237,7 @@ export default function App() {
   const addCard = () => {
     if (cards.length >= 5) return;
     setCards(prev => [...prev, prev.length + 1]);
-    setCharges(prev => [...prev, { id: prev.length + 1, x: 150, y: 150, q: 10 }]);
+    setCharges(prev => [...prev, { id: prev.length + 1, x: 50, y: 50, q: 10 }]);
   };
 
   const removeCard = (index: number) => {
@@ -302,6 +303,8 @@ export default function App() {
           onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
         />
 
+        <Navbar />
+
         <ScrollView
           scrollEnabled={!dragging}
           contentContainerStyle={{ paddingBottom: 40 }}
@@ -310,21 +313,22 @@ export default function App() {
             style={{
               flex: 1,
               flexDirection: isLarge ? "row" : "column",
-              flexWrap: "wrap",
             }}
           >
-            <Navbar />
-
             {/* left side */}
-            <View style={{width: isLarge ? "38%" : "100%",}}>
+            <View style={{ width: isLarge ? "38%" : "100%" }}>
               <View style={styles.containerStyle}>
                 <Text style={styles.titleText}>Coulomb's Law Simulator</Text>
               </View>
 
               <View style={styles.containerStyle}>
                 <Text style={{ fontSize: 24, fontWeight: "bold" }}>Force Display</Text>
-                <Text style={{ fontSize: 15}}>Move the charges around to see the forces acting on them.</Text>
-                <View style={styles.canvasStyle} onLayout={(e) => setCanvas(e.nativeEvent.layout)}>
+                <Text style={{ fontSize: 15 }}>Move the charges around to see the forces.</Text>
+                
+                <View 
+                  style={[styles.canvasStyle, isMobile && { height: 260 }]} 
+                  onLayout={(e) => setCanvas(e.nativeEvent.layout)}
+                >
                   {canvas && (
                     <>
                       <Svg width={canvas.width} height={canvas.height} pointerEvents="none">
@@ -369,7 +373,7 @@ export default function App() {
                           .runOnJS(true);
                         return (
                           <GestureDetector key={c.id} gesture={pan}>
-                            <View style={{ position: "absolute", width: 20, height: 20, left: c.x, top: c.y }} />
+                            <View style={{ position: "absolute", width: 30, height: 30, left: c.x - 5, top: c.y - 5 }} />
                           </GestureDetector>
                         );
                       })}
@@ -377,21 +381,27 @@ export default function App() {
                   )}
                 </View>
 
-                <View style={{ marginTop: 12, padding: 12, borderRadius: 10, backgroundColor: "#002467ff" }}>
-                  <Text style={{ color: "white", fontSize: 24, fontWeight: "bold", marginBottom: 8 }}>Object Measurements</Text>
-                  {forceData.map(f => (
-                    <View key={f.id} style={styles.objectMeasurement}>
-                      <Text style={{ fontSize: 15, fontWeight: "bold" }}>Object {f.id}</Text>
-                      <Text>Position : ({Math.round(f.x)} , {canvas ? Math.round(canvas.height - f.y - 20) : Math.round(f.y)})</Text>
-                      <Text>Fx : {f.Fx.toExponential(2)} N , Fy : {f.Fy.toExponential(2)} N</Text>
-                      <Text>|F| : {f.magnitude.toExponential(2)} N</Text>
-                    </View>
-                  ))}
+                <View style={styles.measurementContainer}>
+                  <Text style={styles.measurementTitle}>Object Measurements</Text>
+                  
+                  <View style={{ maxHeight: isMobile ? 180 : 400 }}>
+                    <ScrollView nestedScrollEnabled={true}>
+                      {forceData.map(f => (
+                        <View key={f.id} style={styles.objectMeasurement}>
+                          <Text style={{ fontSize: 15, fontWeight: "bold" }}>Object {f.id}</Text>
+                          <Text style={{ fontSize: 12 }}>Position : ({Math.round(f.x)} , {canvas ? Math.round(canvas.height - f.y - 20) : 0})</Text>
+                          <Text style={{ fontSize: 12 }}>Fx : {f.Fx.toExponential(2)} N , Fy : {f.Fy.toExponential(2)} N</Text>
+                          <Text style={{ fontSize: 12, fontWeight: 'bold' }}>|F| : {f.magnitude.toExponential(2)} N</Text>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  </View>
+                  
                   <Pressable 
                     onPress={saveExperiment}
-                    style={({ pressed }) => [{ backgroundColor: pressed ? "#45a049" : "#4CAF50", marginTop: 15, padding: 12, borderRadius: 8, alignItems: "center" }]}
+                    style={({ pressed }) => [styles.saveButton, pressed && { opacity: 0.7 }]}
                   >
-                    <Text style={{ color: "white", fontWeight: "bold", fontSize: 14 }}>Save this experiment</Text>
+                    <Text style={styles.saveButtonText}>Save this experiment</Text>
                   </Pressable>
                 </View>
               </View>
@@ -401,13 +411,13 @@ export default function App() {
             </View>
 
             {/* right side */}
-            <View style={{width: isLarge ? "56%" : "100%",}}>
+            <View style={{ width: isLarge ? "56%" : "100%", paddingHorizontal: isMobile ? 0 : 8 }}>
               <View style={styles.containerStyle}>
-                <View style={styles.plusIconSeperator}>
-                  <Text style={styles.titleText}>Add up to 5 objects</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+                <View style={styles.headerRow}>
+                  <Text style={[styles.titleText, isMobile && { fontSize: 18 }]}>Add up to 5 objects</Text>
+                  <View style={styles.headerButtons}>
                     <TouchableOpacity onPress={clearAll}>
-                      <Text style={{ color: '#ff4444', fontWeight: 'bold', fontSize: 14 }}>Clear All</Text>
+                      <Text style={styles.clearButtonText}>Clear All</Text>
                     </TouchableOpacity>
                     <Pressable onPress={addCard}>
                       <RNImage source={require("../../assets/images/plus-butt.png")} style={styles.plusIcon} />
@@ -418,7 +428,7 @@ export default function App() {
 
               {cards.map((c, index) => (
                 <View key={index} style={styles.containerStyle}>
-                  <View style={styles.plusIconSeperator}>
+                  <View style={styles.headerRow}>
                     <Text style={styles.subtitleText}>Object {index + 1}</Text>
                     <Pressable onPress={() => removeCard(index)}>
                       <RNImage source={require("../../assets/images/x.png")} style={styles.xicon} />
@@ -453,13 +463,13 @@ export default function App() {
               ))}
 
               <View style={styles.containerStyle}>
-                <View style={styles.slideButtonSeperator}>
+                <View style={styles.toggleRow}>
                   <Text style={styles.subtitleText}>Show Electric Fields :</Text>
-                  <Switch trackColor={{ false: "#c1c1c1ff", true: "#00ff0dff" }} thumbColor={showEField ? "#009b08ff" : "#f4f3f4"} value={showEField} onValueChange={setShowEField} />
+                  <Switch trackColor={{ false: "#c1c1c1", true: "#00ff0d" }} thumbColor={showEField ? "#009b08" : "#f4f3f4"} value={showEField} onValueChange={setShowEField} />
                 </View>
-                <View style={styles.slideButtonSeperator}>
+                <View style={styles.toggleRow}>
                   <Text style={styles.subtitleText}>Show Potential Fields :</Text>
-                  <Switch trackColor={{ false: "#c1c1c1ff", true: "#00ff0dff" }} thumbColor={showPField ? "#009b08ff" : "#f4f3f4"} value={showPField} onValueChange={setShowPField} />
+                  <Switch trackColor={{ false: "#c1c1c1", true: "#00ff0d" }} thumbColor={showPField ? "#009b08" : "#f4f3f4"} value={showPField} onValueChange={setShowPField} />
                 </View>
               </View>
             </View>
@@ -471,17 +481,23 @@ export default function App() {
 
 const styles = StyleSheet.create({
   mapStyle: { height: 320, borderRadius: 12, overflow: "hidden", backgroundColor: "#ee00ffff" },
-  containerStyle: { margin: 16, padding: 16, borderRadius: 16, backgroundColor: "white", elevation: 5 },
+  containerStyle: { marginHorizontal: 16, marginVertical: 8, padding: 16, borderRadius: 16, backgroundColor: "white", elevation: 5 },
   titleText: { fontSize: 24, fontWeight: "bold" },
   subtitleText: { fontSize: 18, fontWeight: "bold" },
   chargeText: { fontSize: 15, paddingTop: 16, paddingBottom: 8 },
   canvasStyle: { marginTop: 10, height: 320, borderRadius: 12, overflow: "hidden", backgroundColor: "#111", position: "relative" },
-  objectMeasurement: { backgroundColor: "#ffffffff", marginBottom: 10, padding: 10, borderRadius: 8 },
-  plusIconSeperator: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  slideButtonSeperator: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12 },
+  measurementContainer: { marginTop: 12, padding: 12, borderRadius: 10, backgroundColor: "#002467ff" },
+  measurementTitle: { color: "white", fontSize: 20, fontWeight: "bold", marginBottom: 8 },
+  objectMeasurement: { backgroundColor: "#ffffff", marginBottom: 8, padding: 10, borderRadius: 8 },
+  saveButton: { backgroundColor: "#4CAF50", marginTop: 10, padding: 12, borderRadius: 8, alignItems: "center" },
+  saveButtonText: { color: "white", fontWeight: "bold", fontSize: 14 },
+  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  headerButtons: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  clearButtonText: { color: '#ff4444', fontWeight: 'bold', fontSize: 14 },
+  toggleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12 },
   plusIcon: { width: 30, height: 30 },
   xicon:{ width: 20, height: 20 },
-  textInputStyle:{ marginLeft: 24, width: 70, height: 36, borderWidth: 1, borderColor: "#555", borderRadius: 6, paddingHorizontal: 8, backgroundColor: "white" },
+  textInputStyle:{ marginLeft: 10, width: 70, height: 36, borderWidth: 1, borderColor: "#555", borderRadius: 6, paddingHorizontal: 8, backgroundColor: "white" },
   polarButtonSeparator:{ flexDirection: "row", alignItems: "center" },
   polarButton:{ width: 20, height: 20, marginLeft: 24 },
   fieldTitle:{ fontSize: 24, fontWeight: "bold", marginBottom: 10 },
