@@ -52,12 +52,15 @@ export default function Navbar() {
         <TouchableOpacity onPress={() => router.push("/(tabs)/home")}>
           <Text style={styles.menuText}>Home</Text>
         </TouchableOpacity>
+        
+        <TouchableOpacity onPress={() => router.push("/(tabs)/learn")}>
+          <Text style={styles.menuText}>Learn</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push("/(tabs)/lab")}>
           <Text style={styles.menuText}>Virtual Lab</Text>
         </TouchableOpacity>
 
-        {/* MENU HISTORY: Hanya muncul jika user sudah login */}
         {email && (
           <TouchableOpacity onPress={() => router.push("/(tabs)/history")}>
             <Text style={styles.menuText}>History</Text>

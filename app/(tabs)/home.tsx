@@ -30,7 +30,7 @@ export default function Home() {
         </View>
         <View style={styles.containerStyle}>
           <Text style={styles.description}>
-            Welcome to the Columbinizer! 
+            Welcome to the Colombinizer! 
             This app allows you to simulate and visualize 
             electric forces between charged particles using 
             Coulomb's law. You can add, move, and modify 
